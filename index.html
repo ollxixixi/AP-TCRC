@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AP-TCTR-DEMO</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet and jQuery -->
+  <link rel="stylesheet" href="https://npmcdn.com/leaflet@1.0.3/dist/leaflet.css" />
+  <script src="https://npmcdn.com/leaflet@1.0.3/dist/leaflet.js"></script>
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+
+  <!-- Esri Leaflet Plugin -->
+  <script src="https://unpkg.com/esri-leaflet/dist/esri-leaflet.js"></script>
+
+  <!-- Leaflet Control Geocoder -->
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+  <!--leaflet-velocity-->
+  <link rel="stylesheet" href="leaflet-velocity.css" />
+  <script src="leaflet-velocity.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden; /* 去除滚动条 */
+    }
+    #map {
+      height: 100vh;
+    }
+    .latlng-info {
+      position: absolute;
+      bottom: 20px;
+      right: 10px;
+      padding-left: 5px;
+      padding-right: 5px;
+      background: rgba(255, 255, 255, 0.5);
+      font: 11px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
+      z-index: 1000;
+    }
+    .blinking-marker {
+      animation: blinking 2s infinite;
+    }
+    @keyframes blinking {
+      0% { opacity: 0.2; }
+      50% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+    .file-menu {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 5px;
+      padding-left: 10px;
+      padding-right: 10px;
+      font: 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
+      z-index: 1001;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="latlng-info" id="latlngInfo"><b>经度:</b> 121.90, <b>纬度:</b> 30.87</div>
+  <div class="file-menu">
+    <label for="layerSelect"><b>图层选择: </b></label>
+    <select id="layerSelect">
+      <option value="Imagery">卫星图</option>
+      <option value="Streets">街道图</option>
+    </select>
+    <br><div style="height: 5px;"></div>
+    <label for="windSelect"><b>风场选择: </b></label>
+    <select id="windSelect">
+      <option value="none">无风场</option>
+      <option value="wind1">风场1</option>
+      <option value="wind2">风场2</option>
+    </select>
+  </div>
+
+  <script>
+    // 初始化地图
+    var map = L.map('map').setView([30.87, 121.90], 4);
+
+    // 添加 Esri 提供的地图瓦片图层
+    var imagery = L.esri.basemapLayer('Imagery').addTo(map);
+    var streets = L.esri.basemapLayer('Streets');
+
+    // 创建图层组
+    var baseLayers = {
+      "卫星图": imagery,
+      "街道图": streets
+    };
+
+    // 使用下拉菜单进行图层切换
+    document.getElementById('layerSelect').addEventListener('change', function(e) {
+      var selectedLayer = e.target.value;
+
+      // 移除当前所有图层
+      for (var layer in baseLayers) {
+        map.removeLayer(baseLayers[layer]);
+      }
+
+      // 根据选择添加相应的图层
+      if (selectedLayer === 'Streets') {
+        streets.addTo(map);
+      } else if (selectedLayer === 'Imagery') {
+        imagery.addTo(map);
+      }
+    });
+
+    // 添加地点搜索框 (Leaflet Control Geocoder)
+    var geocoder = L.Control.geocoder({
+      position: 'topleft',
+      collapsed: true,
+      placeholder: '搜索地点',
+      defaultMarkGeocode: false
+    }).on('markgeocode', function (e) {
+      map.setView(e.geocode.center, map.getZoom());
+      addMarkerAndAdminInfo(e.geocode.center.lat, e.geocode.center.lng);
+      document.querySelector('.leaflet-control-geocoder-form input').value = '';
+    }).addTo(map);
+
+    // 将搜索框放在缩放控制按钮上方
+    map.zoomControl.setPosition('bottomleft');
+
+    // 在地图上点击某个地点时触发与搜索相同的效果
+    map.on('click', function (e) {
+      addMarkerAndAdminInfo(e.latlng.lat, e.latlng.lng);
+    });
+
+    // 复用显示标记和行政区划信息的函数
+    function addMarkerAndAdminInfo(lat, lng) {
+      var adminInfo = `经度: ${lat.toFixed(5)}<br>纬度: ${lng.toFixed(5)}`;
+
+      // 添加自定义标记并显示信息
+      var customMarker = L.circleMarker([lat, lng], {
+        radius: 3,
+        color: '#CC0000',
+        fillColor: '#CC0000',
+        fillOpacity: 0.8,
+        className: 'blinking-marker'
+      }).addTo(map).bindPopup(adminInfo, { offset: L.point(0, -5) }).openPopup();
+
+      // 监听弹出关闭事件，关闭时移除标记
+      customMarker.on('popupclose', function () {
+        map.removeLayer(customMarker);
+      });
+    }
+
+    // 经纬度信息显示
+    var latlngInfo = document.getElementById('latlngInfo');
+    map.on('mousemove', function (e) {
+      var lat = e.latlng.lat.toFixed(5);
+      var lng = e.latlng.lng.toFixed(5);
+      latlngInfo.innerHTML = '<b>经度:</b> ' + lng + '<b>,</b> ' + '<b>纬度:</b> ' + lat;
+    });
+
+    var velocityLayer1, velocityLayer2;
+
+    // 获取风场数据并初始化风场图层
+    $.getJSON("wind-global.json", function(data) {
+      velocityLayer1 = L.velocityLayer({
+        displayValues: true,
+        displayOptions: {
+          velocityType: "",
+          position: "bottomright",
+          emptyString: "No wind data",
+          showCardinal: true,
+        },
+        data: data,
+        maxVelocity: 30,
+        colorScale: ['#FFFFFF','#FFFFFF'],
+        velocityScale: 0.006
+      });
+    });
+
+    $.getJSON("wind-global.json", function(data) {
+      velocityLayer2 = L.velocityLayer({
+        displayValues: true,
+        displayOptions: {
+          velocityType: "",
+          position: "bottomright",
+          emptyString: "No wind data",
+          showCardinal: true,
+        },
+        data: data,
+        maxVelocity: 30,
+        // colorScale: ['#FFFFFF','#FFFFFF'],
+        velocityScale: 0.006
+      });
+    });
+
+    // 使用下拉菜单进行风场切换
+    document.getElementById('windSelect').addEventListener('change', function(e) {
+      var selectedWind = e.target.value;
+
+      // 移除当前所有风场图层
+      if (velocityLayer1) map.removeLayer(velocityLayer1);
+      if (velocityLayer2) map.removeLayer(velocityLayer2);
+
+      // 根据选择添加相应的风场图层
+      if (selectedWind === 'wind1' && velocityLayer1) {
+        velocityLayer1.addTo(map);
+      } else if (selectedWind === 'wind2' && velocityLayer2) {
+        velocityLayer2.addTo(map);
+      }
+    });
+  </script>
+
+</body>
+</html>

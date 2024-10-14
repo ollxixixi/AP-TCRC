@@ -1,0 +1,13 @@
+.leaflet-control-velocity {
+  bottom: 15px;
+  right: 0px;
+  padding-left: 5px;
+  padding-right: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  font: 11px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
+}
+
+.velocity-overlay {
+  position: absolute;
+  z-index: 1;
+}
