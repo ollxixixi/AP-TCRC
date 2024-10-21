@@ -21,6 +21,11 @@
   <link rel="stylesheet" href="leaflet-velocity.css" />
   <script src="leaflet-velocity.js"></script>
 
+  <!-- 引入 Axios 用于进行 API 请求 -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="warningData.js"></script>
+
+
   <style>
     html, body {
       margin: 0;
@@ -60,6 +65,19 @@
       font: 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
       z-index: 1001;
     }
+    .warning-info{
+      position: absolute;
+      top: 100px;
+      left: 15px;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 5px;
+      padding-left: 10px;
+      padding-right: 10px;
+      font: 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
+      z-index: 1001;
+      display: none; /* 初始隐藏 */
+      width: 300px;
+    }
   </style>
 </head>
 <body>
@@ -80,9 +98,18 @@
     </select>
   </div>
 
+  <div class="warning-info" id="warningInfo" v-if="warnings.length > 0"
+    v-for="(warning, index) in warnings" :key="index">
+      <!-- <strong>{{ warning.title }}</strong> -->
+      <p><strong>预警类型:</strong> {{ warning.title }}</p>
+    <p><strong>预警信息:</strong> {{ warning.text }}</p>
+  </div>
+
+
   <script>
     // 初始化地图
     var map = L.map('map').setView([30.87, 121.90], 4);
+    // window.map = L.map('map').setView([30.87, 121.90], 4);
 
     // 添加 Esri 提供的地图瓦片图层
     var imagery = L.esri.basemapLayer('Imagery').addTo(map);
@@ -126,9 +153,16 @@
     // 将搜索框放在缩放控制按钮上方
     map.zoomControl.setPosition('bottomleft');
 
+    let warnings = [];
+
     // 在地图上点击某个地点时触发与搜索相同的效果
     map.on('click', function (e) {
-      addMarkerAndAdminInfo(e.latlng.lat, e.latlng.lng);
+      // addMarkerAndAdminInfo(e.latlng.lat, e.latlng.lng);
+      var lat = e.latlng.lat;
+  var lon = e.latlng.lng;
+  addMarkerAndAdminInfo(lat, lon);  // 仍然保留现有的标记功能
+  warnings = fetchWarnings(lon, lat);  // 获取并显示预警信息
+  console.log(warnings);
     });
 
     // 复用显示标记和行政区划信息的函数
